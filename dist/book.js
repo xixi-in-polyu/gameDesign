@@ -1,14 +1,15 @@
 const SPRITE_SIZE=32;
 const PREVIEW_SCALE=10;
 const PREVIEW_SIZE=SPRITE_SIZE*PREVIEW_SCALE;
+const MAX_COLORS=16;
 const STORAGE_PREFIX='artbook.sprite.32.';
 const characters={
- yueling:{name:'沈月玲',native:'assets/shen-yueling-32x32.png?rev=4',preview:'assets/shen-yueling-32x32-preview.png?rev=4',verification:'assets/shen-yueling-32x32-verification.json',title:'沈月玲 · 六色定稿',copy:'红巾、短海青衣和左腰绳圈建立身份；减少中间色与衣褶，在 32 像素网格里保留清晰读形。',palette:[
+ yueling:{name:'沈月玲',native:'assets/shen-yueling-32x32.png?rev=4',preview:'assets/shen-yueling-32x32-preview.png?rev=4',verification:'assets/shen-yueling-32x32-verification.json',title:'沈月玲 · 基础六色 + 自定义',copy:'红巾、短海青衣和左腰绳圈建立身份；默认稿使用六色，编辑时可导入或选择更多颜色。',palette:[
   ['#24232A','墨黑','外轮廓与五官'],['#383E53','靛灰','宽裤与布鞋'],
   ['#46766F','海青','短衣主体'],['#AD4939','砖红','头巾与腰带'],
   ['#EDB980','暖肤','面部与手臂'],['#F3DCAF','麻白','交领、绑腿与腰绳']
  ]},
- linsi:{name:'林巳',native:'assets/lin-si-32x32.png?rev=4',preview:'assets/lin-si-32x32-preview.png?rev=4',verification:'assets/lin-si-32x32-verification.json',title:'林巳 · 六色定稿',copy:'方脸、布帽和长灰蓝衣形成更高、更直的轮廓；工具包与短火器压缩为少量高辨识色块。',palette:[
+ linsi:{name:'林巳',native:'assets/lin-si-32x32.png?rev=4',preview:'assets/lin-si-32x32-preview.png?rev=4',verification:'assets/lin-si-32x32-verification.json',title:'林巳 · 基础六色 + 自定义',copy:'方脸、布帽和长灰蓝衣形成更高、更直的轮廓；默认稿使用六色，编辑时可导入或选择更多颜色。',palette:[
   ['#24232A','墨黑','外轮廓与五官'],['#3C3B46','炭灰','布帽、裤脚与鞋'],
   ['#617178','灰蓝','长衣主体'],['#A54B2D','锈红','束带与垂带'],
   ['#956C43','皮褐','工具包与火器'],['#E4C391','暖米','面部、交领、手脚与工具高光']
@@ -81,7 +82,19 @@ function base64ToImageData(encoded){
  return new ImageData(pixels,SPRITE_SIZE,SPRITE_SIZE);
 }
 function currentEditorState(){return editorStates[currentCharacter]}
-function paletteHexes(){return new Set(characters[currentCharacter].palette.map(color=>color[0].toUpperCase()))}
+function imageColors(imageData){
+ const colors=new Set();
+ for(let index=0;index<imageData.data.length;index+=4){
+  if(imageData.data[index+3]===255)colors.add(rgbToHex(imageData.data[index],imageData.data[index+1],imageData.data[index+2]));
+ }
+ return colors;
+}
+function ensurePaletteColor(key,hex,name='自定义色',area='导入或自定义'){
+ const normalized=hex.toUpperCase();const palette=characters[key].palette;
+ if(!palette.some(color=>color[0].toUpperCase()===normalized))palette.push([normalized,name,area]);
+ return normalized;
+}
+function syncPaletteFromImage(key,imageData){imageColors(imageData).forEach(hex=>ensurePaletteColor(key,hex,'导入色','来自 PNG'))}
 
 async function sourceToImageData(source){
  const image=new Image();image.src=source;await image.decode();
@@ -96,6 +109,7 @@ async function loadEditorCharacter(key,force=false){
  if(force||!editorStates[key]){
   editorStates[key]={imageData:await sourceToImageData(data.native),history:[],future:[]};
  }
+ syncPaletteFromImage(key,editorStates[key].imageData);
  if(currentCharacter!==key)return;
  editorColor=data.palette[0][0];
  document.querySelector('#editor-character-name').textContent=`${data.name} · 像素编辑`;
@@ -112,7 +126,7 @@ function renderEditorCanvas(message){
   if(alpha===255)opaque.add(rgbToHex(state.imageData.data[index],state.imageData.data[index+1],state.imageData.data[index+2]));
  }
  document.querySelector('#editor-color-count').textContent=opaque.size;
- document.querySelector('#editor-status').textContent=message||`32 × 32 · ${opaque.size} / 6 色 · Alpha ${alphaValid?'0 / 255':'包含半透明'}`;
+ document.querySelector('#editor-status').textContent=message||`32 × 32 · ${opaque.size} / ${MAX_COLORS} 色 · Alpha ${alphaValid?'0 / 255':'包含半透明'}${opaque.size>MAX_COLORS?' · 颜色过多':''}`;
  document.querySelector('#editor-undo').disabled=!state.history.length;
  document.querySelector('#editor-redo').disabled=!state.future.length;
 }
@@ -123,7 +137,12 @@ function renderEditorPalette(){
  container.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{
   editorColor=button.dataset.editorColor;setEditorTool('pencil');renderEditorPalette();
  }));
+ const custom=document.querySelector('#editor-custom-color');if(custom)custom.value=editorColor;
 }
+
+document.querySelector('#editor-custom-color').addEventListener('input',event=>{
+ editorColor=ensurePaletteColor(currentCharacter,event.target.value,'自定义色','用户选择');setEditorTool('pencil');renderEditorPalette();
+});
 
 function setEditorTool(tool){
  editorTool=tool;
@@ -178,7 +197,7 @@ function pickEditorColor(x,y){
  const data=currentEditorState().imageData.data;const offset=(y*SPRITE_SIZE+x)*4;
  if(data[offset+3]!==255){setEditorTool('eraser');return}
  const hex=rgbToHex(data[offset],data[offset+1],data[offset+2]);
- if(paletteHexes().has(hex)){editorColor=hex;setEditorTool('pencil');renderEditorPalette()}
+ editorColor=ensurePaletteColor(currentCharacter,hex,'取样色','来自画布');setEditorTool('pencil');renderEditorPalette();
 }
 
 editorCanvas.addEventListener('pointerdown',event=>{
@@ -242,6 +261,7 @@ function characterFilename(){return currentCharacter==='yueling'?'shen-yueling':
 
 document.querySelector('#editor-apply').addEventListener('click',async()=>{
  const button=document.querySelector('#editor-apply');const key=currentCharacter;const imageData=copyImageData(currentEditorState().imageData);
+ const used=imageColors(imageData);if(used.size>MAX_COLORS){renderEditorCanvas(`发布失败：当前使用 ${used.size} 色，最多允许 ${MAX_COLORS} 色`);return}
  button.disabled=true;button.textContent='正在发布…';renderEditorCanvas('正在替换共享角色，请稍候');
  try{
   const response=await fetch('/api/sprite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({character:key,pixels:imageDataToBase64(imageData)})});
@@ -265,13 +285,13 @@ document.querySelector('#editor-import').addEventListener('change',async event=>
  try{
   await image.decode();if(image.naturalWidth!==SPRITE_SIZE||image.naturalHeight!==SPRITE_SIZE)throw new Error('图片必须严格为 32 × 32 像素');
   const canvas=document.createElement('canvas');canvas.width=canvas.height=SPRITE_SIZE;const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(image,0,0);
-  const imported=context.getImageData(0,0,SPRITE_SIZE,SPRITE_SIZE);const allowed=paletteHexes();const used=new Set();
+  const imported=context.getImageData(0,0,SPRITE_SIZE,SPRITE_SIZE);const used=new Set();
   for(let index=0;index<imported.data.length;index+=4){
    const alpha=imported.data[index+3];if(alpha!==0&&alpha!==255)throw new Error('图片包含半透明像素');
-   if(alpha===255){const hex=rgbToHex(imported.data[index],imported.data[index+1],imported.data[index+2]);used.add(hex);if(!allowed.has(hex))throw new Error(`图片包含色板外颜色 ${hex}`)}
+   if(alpha===255){const hex=rgbToHex(imported.data[index],imported.data[index+1],imported.data[index+2]);used.add(hex)}
   }
-  if(used.size>6)throw new Error('图片使用超过 6 种不透明颜色');
-  snapshotForUndo();currentEditorState().imageData=imported;renderEditorCanvas(`已导入 ${file.name} · ${used.size} 色`);
+  if(used.size>MAX_COLORS)throw new Error(`图片使用超过 ${MAX_COLORS} 种不透明颜色`);
+  snapshotForUndo();currentEditorState().imageData=imported;syncPaletteFromImage(currentCharacter,imported);renderEditorPalette();renderEditorCanvas(`已导入 ${file.name} · ${used.size} 色`);
  }catch(error){renderEditorCanvas(`导入失败：${error.message}`)}finally{URL.revokeObjectURL(image.src)}
 });
 

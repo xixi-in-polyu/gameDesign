@@ -1,11 +1,8 @@
 import { get, put } from '@vercel/blob';
 
-const characterPalettes = {
-  yueling: new Set(['#24232A','#383E53','#46766F','#AD4939','#EDB980','#F3DCAF']),
-  linsi: new Set(['#24232A','#3C3B46','#617178','#A54B2D','#956C43','#E4C391']),
-};
-
+const characters = new Set(['yueling', 'linsi']);
 const spriteSize = 32;
+const maxColors = 16;
 
 const jsonHeaders = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -21,22 +18,20 @@ function pathname(character) {
   return `artbook/shared-sprites/${character}.json`;
 }
 
-function validatePixels(character, encoded) {
+function validatePixels(encoded) {
   if (typeof encoded !== 'string' || encoded.length > 30000) throw new Error('像素数据格式无效');
   const pixels = Buffer.from(encoded, 'base64');
   if (pixels.length !== spriteSize * spriteSize * 4) throw new Error('像素数据必须严格为 32 × 32 RGBA');
-  const allowed = characterPalettes[character];
   const used = new Set();
   for (let index = 0; index < pixels.length; index += 4) {
     const alpha = pixels[index + 3];
     if (alpha !== 0 && alpha !== 255) throw new Error('Alpha 只能为 0 或 255');
     if (alpha === 255) {
       const hex = `#${[pixels[index], pixels[index + 1], pixels[index + 2]].map(value => value.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
-      if (!allowed.has(hex)) throw new Error(`包含色板外颜色 ${hex}`);
       used.add(hex);
     }
   }
-  if (used.size > allowed.size) throw new Error('不透明颜色不能超过 6 种');
+  if (used.size > maxColors) throw new Error(`不透明颜色不能超过 ${maxColors} 种`);
   return { pixels: pixels.toString('base64'), colorCount: used.size };
 }
 
@@ -46,7 +41,7 @@ async function handler(request) {
 
   if (request.method === 'GET') {
     const character = url.searchParams.get('character');
-    if (!characterPalettes[character]) return reply({ error: '未知角色' }, 400);
+    if (!characters.has(character)) return reply({ error: '未知角色' }, 400);
     const result = await get(pathname(character), { access: 'private' });
     if (!result || result.statusCode !== 200) return reply({ error: '尚无共享版本' }, 404);
     const record = JSON.parse(await new Response(result.stream).text());
@@ -56,8 +51,8 @@ async function handler(request) {
   if (request.method === 'POST') {
     try {
       const body = await request.json();
-      if (!characterPalettes[body.character]) return reply({ error: '未知角色' }, 400);
-      const checked = validatePixels(body.character, body.pixels);
+      if (!characters.has(body.character)) return reply({ error: '未知角色' }, 400);
+      const checked = validatePixels(body.pixels);
       const record = { version: 2, size: spriteSize, character: body.character, pixels: checked.pixels, colorCount: checked.colorCount, updatedAt: new Date().toISOString() };
       await put(pathname(body.character), JSON.stringify(record), {
         access: 'private',
