@@ -1,0 +1,59 @@
+{
+  "original": [
+    64,
+    64
+  ],
+  "preview": [
+    512,
+    512
+  ],
+  "opaque_rgb_count": 8,
+  "palette_pixel_counts": {
+    "#24232A": 380,
+    "#B78458": 87,
+    "#383E53": 114,
+    "#AD4939": 125,
+    "#EDB980": 78,
+    "#F3DCAF": 57,
+    "#295254": 109,
+    "#57877B": 115
+  },
+  "alpha_values": [
+    0,
+    255
+  ],
+  "preview_scale": 8,
+  "exact_replication_pixels": 262144,
+  "occupied_y_rows": [
+    6,
+    61
+  ],
+  "lin_si_occupied_y_rows": [
+    3,
+    61
+  ],
+  "height_reduction_vs_lin_si_percent": 5.08,
+  "concept_turnaround_views": {
+    "front": {
+      "yueling_top": 82,
+      "yueling_ground": 1005,
+      "lin_si_top": 12,
+      "lin_si_ground": 1006,
+      "height_reduction_percent": 7.14
+    },
+    "side": {
+      "yueling_top": 89,
+      "yueling_ground": 1006,
+      "lin_si_top": 12,
+      "lin_si_ground": 1007,
+      "height_reduction_percent": 7.83
+    },
+    "back": {
+      "yueling_top": 85,
+      "yueling_ground": 1003,
+      "lin_si_top": 12,
+      "lin_si_ground": 1005,
+      "height_reduction_percent": 7.55
+    }
+  }
+}

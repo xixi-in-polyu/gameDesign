@@ -1,0 +1,28 @@
+{
+  "character": "林巳 / 朱允熙",
+  "original": [
+    64,
+    64
+  ],
+  "preview": [
+    512,
+    512
+  ],
+  "opaque_rgb_count": 8,
+  "palette_pixel_counts": {
+    "#24232A": 470,
+    "#4D5C62": 135,
+    "#708087": 127,
+    "#3C3B46": 110,
+    "#E5AD75": 109,
+    "#E4D2AE": 83,
+    "#956C43": 119,
+    "#A54B2D": 52
+  },
+  "alpha_values": [
+    0,
+    255
+  ],
+  "preview_scale": 8,
+  "exact_replication_pixels": 262144
+}
