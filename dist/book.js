@@ -1,22 +1,24 @@
+const SPRITE_SIZE=32;
+const PREVIEW_SCALE=10;
+const PREVIEW_SIZE=SPRITE_SIZE*PREVIEW_SCALE;
+const STORAGE_PREFIX='artbook.sprite.32.';
 const characters={
- yueling:{name:'沈月玲',native:'assets/character_64x64.png?rev=3',preview:'assets/character_preview.png?rev=3',verification:'assets/verification.json',title:'沈月玲 · 八色定稿',copy:'墨色连接轮廓，海青区分受光与背光。麻绳与肌肤共用暖色，米白只落在领口、绑腿和少数亮点。',palette:[
-  ['#24232A','墨黑','头发与外轮廓'],['#383E53','靛灰','宽裤与布鞋'],
-  ['#295254','深海青','短衣暗面'],['#57877B','灰绿','肩袖受光面'],
-  ['#AD4939','砖红','头巾与腰带'],['#B78458','绳褐','腰绳与肤色暗面'],
-  ['#EDB980','暖肤','面颊与前臂'],['#F3DCAF','麻白','交领、绑腿与绳光']
+ yueling:{name:'沈月玲',native:'assets/shen-yueling-32x32.png?rev=4',preview:'assets/shen-yueling-32x32-preview.png?rev=4',verification:'assets/shen-yueling-32x32-verification.json',title:'沈月玲 · 六色定稿',copy:'红巾、短海青衣和左腰绳圈建立身份；减少中间色与衣褶，在 32 像素网格里保留清晰读形。',palette:[
+  ['#24232A','墨黑','外轮廓与五官'],['#383E53','靛灰','宽裤与布鞋'],
+  ['#46766F','海青','短衣主体'],['#AD4939','砖红','头巾与腰带'],
+  ['#EDB980','暖肤','面部与手臂'],['#F3DCAF','麻白','交领、绑腿与腰绳']
  ]},
- linsi:{name:'林巳',native:'assets/lin-si-64x64.png?rev=3',preview:'assets/lin-si-preview.png?rev=3',verification:'assets/lin-si-verification.json',title:'林巳 · 八色定稿',copy:'冷灰蓝建立书生的纵向轮廓，锈红束带切开衣身；皮褐同时承担工具包、火器木柄与衣缘，米白留给交领和绑腿。',palette:[
-  ['#24232A','墨黑','头发与外轮廓'],['#3C3B46','炭灰','布帽、裤脚与鞋'],
-  ['#4D5C62','深灰蓝','长衣暗面'],['#708087','雾灰蓝','衣襟受光面'],
-  ['#A54B2D','锈红','束带与垂带'],['#956C43','皮褐','工具包、衣缘与火器'],
-  ['#E5AD75','暖肤','面部、前臂与双手'],['#E4D2AE','旧纸白','交领、绑腿与工具高光']
+ linsi:{name:'林巳',native:'assets/lin-si-32x32.png?rev=4',preview:'assets/lin-si-32x32-preview.png?rev=4',verification:'assets/lin-si-32x32-verification.json',title:'林巳 · 六色定稿',copy:'方脸、布帽和长灰蓝衣形成更高、更直的轮廓；工具包与短火器压缩为少量高辨识色块。',palette:[
+  ['#24232A','墨黑','外轮廓与五官'],['#3C3B46','炭灰','布帽、裤脚与鞋'],
+  ['#617178','灰蓝','长衣主体'],['#A54B2D','锈红','束带与垂带'],
+  ['#956C43','皮褐','工具包与火器'],['#E4C391','暖米','面部、交领、手脚与工具高光']
  ]}
 };
 Object.entries(characters).forEach(([key,data])=>{
  data.originalNative=data.native;
  data.originalPreview=data.preview;
  try{
-  const saved=JSON.parse(localStorage.getItem(`artbook.sprite.${key}`));
+  const saved=JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}${key}`));
   if(saved?.native&&saved?.preview){data.native=saved.native;data.preview=saved.preview}
  }catch(error){console.warn('Stored sprite could not be read',error)}
 });
@@ -33,8 +35,8 @@ const sprite=document.querySelector('#sprite');
 const scales=[...document.querySelectorAll('[data-scale]')];
 function setScale(scale){
  const data=characters[currentCharacter];
- sprite.width=sprite.height=64*scale;
- sprite.src=scale===8?data.preview:data.native;
+ sprite.width=sprite.height=SPRITE_SIZE*scale;
+ sprite.src=scale===PREVIEW_SCALE?data.preview:data.native;
  stage.style.setProperty('--scale',scale+'px');
  scales.forEach(button=>button.setAttribute('aria-pressed',Number(button.dataset.scale)===scale));
 }
@@ -51,7 +53,7 @@ function selectCharacter(key){
  const download=document.querySelector('#sprite-download');
  download.href=data.native;download.setAttribute('aria-label',`下载${data.name}原生像素 PNG`);
  renderPalette();
- const selectedScale=Number(document.querySelector('[data-scale][aria-pressed="true"]')?.dataset.scale||8);
+ const selectedScale=Number(document.querySelector('[data-scale][aria-pressed="true"]')?.dataset.scale||PREVIEW_SCALE);
  setScale(selectedScale);
 }
 document.querySelectorAll('[data-character]').forEach(button=>button.addEventListener('click',()=>{
@@ -69,24 +71,24 @@ let editorColor=characters.linsi.palette[0][0];
 let editorDrawing=false;
 let lastEditorPoint=null;
 
-function copyImageData(imageData){return new ImageData(new Uint8ClampedArray(imageData.data),64,64)}
+function copyImageData(imageData){return new ImageData(new Uint8ClampedArray(imageData.data),SPRITE_SIZE,SPRITE_SIZE)}
 function hexToRgb(hex){return [parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]}
 function rgbToHex(r,g,b){return `#${[r,g,b].map(value=>value.toString(16).padStart(2,'0')).join('').toUpperCase()}`}
 function imageDataToBase64(imageData){return btoa(String.fromCharCode(...imageData.data))}
 function base64ToImageData(encoded){
- const binary=atob(encoded);if(binary.length!==64*64*4)throw new Error('共享像素数据尺寸无效');
+ const binary=atob(encoded);if(binary.length!==SPRITE_SIZE*SPRITE_SIZE*4)throw new Error('共享像素数据尺寸无效');
  const pixels=new Uint8ClampedArray(binary.length);for(let index=0;index<binary.length;index++)pixels[index]=binary.charCodeAt(index);
- return new ImageData(pixels,64,64);
+ return new ImageData(pixels,SPRITE_SIZE,SPRITE_SIZE);
 }
 function currentEditorState(){return editorStates[currentCharacter]}
 function paletteHexes(){return new Set(characters[currentCharacter].palette.map(color=>color[0].toUpperCase()))}
 
 async function sourceToImageData(source){
  const image=new Image();image.src=source;await image.decode();
- const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
+ const canvas=document.createElement('canvas');canvas.width=SPRITE_SIZE;canvas.height=SPRITE_SIZE;
  const context=canvas.getContext('2d',{willReadFrequently:true});context.imageSmoothingEnabled=false;
- context.clearRect(0,0,64,64);context.drawImage(image,0,0,64,64);
- return context.getImageData(0,0,64,64);
+ context.clearRect(0,0,SPRITE_SIZE,SPRITE_SIZE);context.drawImage(image,0,0,SPRITE_SIZE,SPRITE_SIZE);
+ return context.getImageData(0,0,SPRITE_SIZE,SPRITE_SIZE);
 }
 
 async function loadEditorCharacter(key,force=false){
@@ -110,7 +112,7 @@ function renderEditorCanvas(message){
   if(alpha===255)opaque.add(rgbToHex(state.imageData.data[index],state.imageData.data[index+1],state.imageData.data[index+2]));
  }
  document.querySelector('#editor-color-count').textContent=opaque.size;
- document.querySelector('#editor-status').textContent=message||`64 × 64 · ${opaque.size} / 8 色 · Alpha ${alphaValid?'0 / 255':'包含半透明'}`;
+ document.querySelector('#editor-status').textContent=message||`32 × 32 · ${opaque.size} / 6 色 · Alpha ${alphaValid?'0 / 255':'包含半透明'}`;
  document.querySelector('#editor-undo').disabled=!state.history.length;
  document.querySelector('#editor-redo').disabled=!state.future.length;
 }
@@ -130,7 +132,7 @@ function setEditorTool(tool){
 
 function editorPoint(event){
  const rect=editorCanvas.getBoundingClientRect();
- return {x:Math.max(0,Math.min(63,Math.floor((event.clientX-rect.left)*64/rect.width))),y:Math.max(0,Math.min(63,Math.floor((event.clientY-rect.top)*64/rect.height)))};
+ return {x:Math.max(0,Math.min(SPRITE_SIZE-1,Math.floor((event.clientX-rect.left)*SPRITE_SIZE/rect.width))),y:Math.max(0,Math.min(SPRITE_SIZE-1,Math.floor((event.clientY-rect.top)*SPRITE_SIZE/rect.height)))};
 }
 
 function snapshotForUndo(){
@@ -142,7 +144,7 @@ function snapshotForUndo(){
 
 function replacementColor(){return editorTool==='eraser'?[0,0,0,0]:[...hexToRgb(editorColor),255]}
 function setEditorPixel(x,y,color=replacementColor(),render=true){
- const state=currentEditorState();const offset=(y*64+x)*4;let changed=false;
+ const state=currentEditorState();const offset=(y*SPRITE_SIZE+x)*4;let changed=false;
  for(let channel=0;channel<4;channel++)if(state.imageData.data[offset+channel]!==color[channel])changed=true;
  if(!changed)return;
  for(let channel=0;channel<4;channel++)state.imageData.data[offset+channel]=color[channel];
@@ -156,24 +158,24 @@ function drawEditorLine(from,to){
 }
 
 function fillEditorArea(x,y){
- const state=currentEditorState();const data=state.imageData.data;const start=(y*64+x)*4;
+ const state=currentEditorState();const data=state.imageData.data;const start=(y*SPRITE_SIZE+x)*4;
  const target=[data[start],data[start+1],data[start+2],data[start+3]];
  const replacement=[...hexToRgb(editorColor),255];
  if(target.every((value,index)=>value===replacement[index]))return;
  snapshotForUndo();
- const visited=new Uint8Array(4096);const stack=[y*64+x];
+ const visited=new Uint8Array(SPRITE_SIZE*SPRITE_SIZE);const stack=[y*SPRITE_SIZE+x];
  while(stack.length){
   const point=stack.pop();if(visited[point])continue;visited[point]=1;
   const offset=point*4;if(!target.every((value,index)=>data[offset+index]===value))continue;
   replacement.forEach((value,index)=>data[offset+index]=value);
-  const px=point%64,py=Math.floor(point/64);
-  if(px>0)stack.push(point-1);if(px<63)stack.push(point+1);if(py>0)stack.push(point-64);if(py<63)stack.push(point+64);
+  const px=point%SPRITE_SIZE,py=Math.floor(point/SPRITE_SIZE);
+  if(px>0)stack.push(point-1);if(px<SPRITE_SIZE-1)stack.push(point+1);if(py>0)stack.push(point-SPRITE_SIZE);if(py<SPRITE_SIZE-1)stack.push(point+SPRITE_SIZE);
  }
  renderEditorCanvas();
 }
 
 function pickEditorColor(x,y){
- const data=currentEditorState().imageData.data;const offset=(y*64+x)*4;
+ const data=currentEditorState().imageData.data;const offset=(y*SPRITE_SIZE+x)*4;
  if(data[offset+3]!==255){setEditorTool('eraser');return}
  const hex=rgbToHex(data[offset],data[offset+1],data[offset+2]);
  if(paletteHexes().has(hex)){editorColor=hex;setEditorTool('pencil');renderEditorPalette()}
@@ -205,22 +207,22 @@ document.querySelector('#editor-redo').addEventListener('click',()=>{
 });
 
 function previewDataUrl(){
- const preview=document.createElement('canvas');preview.width=preview.height=512;
- const context=preview.getContext('2d');context.imageSmoothingEnabled=false;context.drawImage(editorCanvas,0,0,512,512);
+ const preview=document.createElement('canvas');preview.width=preview.height=PREVIEW_SIZE;
+ const context=preview.getContext('2d');context.imageSmoothingEnabled=false;context.drawImage(editorCanvas,0,0,PREVIEW_SIZE,PREVIEW_SIZE);
  return preview.toDataURL('image/png');
 }
 function imageDataUrls(imageData){
- const native=document.createElement('canvas');native.width=native.height=64;
+ const native=document.createElement('canvas');native.width=native.height=SPRITE_SIZE;
  const nativeContext=native.getContext('2d');nativeContext.putImageData(imageData,0,0);
- const preview=document.createElement('canvas');preview.width=preview.height=512;
- const previewContext=preview.getContext('2d');previewContext.imageSmoothingEnabled=false;previewContext.drawImage(native,0,0,512,512);
+ const preview=document.createElement('canvas');preview.width=preview.height=PREVIEW_SIZE;
+ const previewContext=preview.getContext('2d');previewContext.imageSmoothingEnabled=false;previewContext.drawImage(native,0,0,PREVIEW_SIZE,PREVIEW_SIZE);
  return {native:native.toDataURL('image/png'),preview:preview.toDataURL('image/png')};
 }
 function applySpriteToPage(key,imageData){
  const data=characters[key];const urls=imageDataUrls(imageData);data.native=urls.native;data.preview=urls.preview;
- localStorage.setItem(`artbook.sprite.${key}`,JSON.stringify(urls));
+ localStorage.setItem(`${STORAGE_PREFIX}${key}`,JSON.stringify(urls));
  if(currentCharacter===key){
-  const scale=Number(document.querySelector('[data-scale][aria-pressed="true"]')?.dataset.scale||8);setScale(scale);
+  const scale=Number(document.querySelector('[data-scale][aria-pressed="true"]')?.dataset.scale||PREVIEW_SCALE);setScale(scale);
   document.querySelector('#native-sprite').src=data.native;document.querySelector('#sprite-download').href=data.native;
  }
 }
@@ -249,10 +251,10 @@ document.querySelector('#editor-apply').addEventListener('click',async()=>{
   applySpriteToPage(key,imageData);renderEditorCanvas(`共享发布失败，仅保存到当前浏览器：${error.message}`);
  }finally{button.disabled=false;button.textContent='替换网页角色（共享）'}
 });
-document.querySelector('#editor-export').addEventListener('click',()=>downloadDataUrl(editorCanvas.toDataURL('image/png'),`${characterFilename()}-edited-64x64.png`));
-document.querySelector('#editor-export-preview').addEventListener('click',()=>downloadDataUrl(previewDataUrl(),`${characterFilename()}-edited-preview-8x.png`));
+document.querySelector('#editor-export').addEventListener('click',()=>downloadDataUrl(editorCanvas.toDataURL('image/png'),`${characterFilename()}-edited-32x32.png`));
+document.querySelector('#editor-export-preview').addEventListener('click',()=>downloadDataUrl(previewDataUrl(),`${characterFilename()}-edited-preview-10x.png`));
 document.querySelector('#editor-reset').addEventListener('click',async()=>{
- const data=characters[currentCharacter];localStorage.removeItem(`artbook.sprite.${currentCharacter}`);
+ const data=characters[currentCharacter];localStorage.removeItem(`${STORAGE_PREFIX}${currentCharacter}`);
  data.native=data.originalNative;data.preview=data.originalPreview;delete editorStates[currentCharacter];
  await loadEditorCharacter(currentCharacter,true);selectCharacter(currentCharacter);renderEditorCanvas('已恢复项目中的原始像素稿');
 });
@@ -261,14 +263,14 @@ document.querySelector('#editor-import').addEventListener('change',async event=>
  const file=event.target.files[0];event.target.value='';if(!file)return;
  const image=new Image();image.src=URL.createObjectURL(file);
  try{
-  await image.decode();if(image.naturalWidth!==64||image.naturalHeight!==64)throw new Error('图片必须严格为 64 × 64 像素');
-  const canvas=document.createElement('canvas');canvas.width=canvas.height=64;const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(image,0,0);
-  const imported=context.getImageData(0,0,64,64);const allowed=paletteHexes();const used=new Set();
+  await image.decode();if(image.naturalWidth!==SPRITE_SIZE||image.naturalHeight!==SPRITE_SIZE)throw new Error('图片必须严格为 32 × 32 像素');
+  const canvas=document.createElement('canvas');canvas.width=canvas.height=SPRITE_SIZE;const context=canvas.getContext('2d',{willReadFrequently:true});context.drawImage(image,0,0);
+  const imported=context.getImageData(0,0,SPRITE_SIZE,SPRITE_SIZE);const allowed=paletteHexes();const used=new Set();
   for(let index=0;index<imported.data.length;index+=4){
    const alpha=imported.data[index+3];if(alpha!==0&&alpha!==255)throw new Error('图片包含半透明像素');
    if(alpha===255){const hex=rgbToHex(imported.data[index],imported.data[index+1],imported.data[index+2]);used.add(hex);if(!allowed.has(hex))throw new Error(`图片包含色板外颜色 ${hex}`)}
   }
-  if(used.size>8)throw new Error('图片使用超过 8 种不透明颜色');
+  if(used.size>6)throw new Error('图片使用超过 6 种不透明颜色');
   snapshotForUndo();currentEditorState().imageData=imported;renderEditorCanvas(`已导入 ${file.name} · ${used.size} 色`);
  }catch(error){renderEditorCanvas(`导入失败：${error.message}`)}finally{URL.revokeObjectURL(image.src)}
 });
