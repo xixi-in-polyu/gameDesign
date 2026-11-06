@@ -67,6 +67,7 @@ const editorCanvas=document.querySelector('#editor-canvas');
 const editorContext=editorCanvas.getContext('2d',{willReadFrequently:true});
 editorContext.imageSmoothingEnabled=false;
 const editorStates={};
+const editorCustomColors={yueling:new Set(),linsi:new Set()};
 let editorTool='pencil';
 let editorColor=characters.linsi.palette[0][0];
 let editorDrawing=false;
@@ -89,12 +90,12 @@ function imageColors(imageData){
  }
  return colors;
 }
-function ensurePaletteColor(key,hex,name='自定义色',area='导入或自定义'){
- const normalized=hex.toUpperCase();const palette=characters[key].palette;
- if(!palette.some(color=>color[0].toUpperCase()===normalized))palette.push([normalized,name,area]);
- return normalized;
+function editorPaletteEntries(key=currentCharacter){
+ const colors=editorStates[key]?imageColors(editorStates[key].imageData):new Set();
+ editorCustomColors[key].forEach(hex=>colors.add(hex));
+ const baseNames=new Map(characters[key].palette.map(([hex,name])=>[hex.toUpperCase(),name]));
+ return [...colors].map(hex=>[hex,baseNames.get(hex)||(editorCustomColors[key].has(hex)?'自定义色':'图片颜色')]);
 }
-function syncPaletteFromImage(key,imageData){imageColors(imageData).forEach(hex=>ensurePaletteColor(key,hex,'导入色','来自 PNG'))}
 
 async function sourceToImageData(source){
  const image=new Image();image.src=source;await image.decode();
@@ -108,10 +109,10 @@ async function loadEditorCharacter(key,force=false){
  const data=characters[key];
  if(force||!editorStates[key]){
   editorStates[key]={imageData:await sourceToImageData(data.native),history:[],future:[]};
+  if(force)editorCustomColors[key].clear();
  }
- syncPaletteFromImage(key,editorStates[key].imageData);
  if(currentCharacter!==key)return;
- editorColor=data.palette[0][0];
+ const palette=editorPaletteEntries(key);if(!palette.some(([hex])=>hex===editorColor))editorColor=palette[0]?.[0]||'#24232A';
  document.querySelector('#editor-character-name').textContent=`${data.name} · 像素编辑`;
  renderEditorPalette();renderEditorCanvas();
 }
@@ -133,15 +134,16 @@ function renderEditorCanvas(message){
 
 function renderEditorPalette(){
  const container=document.querySelector('#editor-palette');
- container.innerHTML=characters[currentCharacter].palette.map(([hex,name])=>`<button data-editor-color="${hex}" title="${name} ${hex}" aria-label="${name} ${hex}" aria-pressed="${hex===editorColor}"><i style="background:${hex}"></i><code>${hex}</code></button>`).join('');
+ container.innerHTML=editorPaletteEntries().map(([hex,name])=>`<button data-editor-color="${hex}" title="${name} ${hex}" aria-label="${name} ${hex}" aria-pressed="${hex===editorColor}"><i style="background:${hex}"></i><code>${hex}</code></button>`).join('');
  container.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{
   editorColor=button.dataset.editorColor;setEditorTool('pencil');renderEditorPalette();
  }));
  const custom=document.querySelector('#editor-custom-color');if(custom)custom.value=editorColor;
 }
 
-document.querySelector('#editor-custom-color').addEventListener('input',event=>{
- editorColor=ensurePaletteColor(currentCharacter,event.target.value,'自定义色','用户选择');setEditorTool('pencil');renderEditorPalette();
+document.querySelector('#editor-add-color').addEventListener('click',()=>{
+ const hex=document.querySelector('#editor-custom-color').value.toUpperCase();editorCustomColors[currentCharacter].add(hex);
+ editorColor=hex;setEditorTool('pencil');renderEditorPalette();
 });
 
 function setEditorTool(tool){
@@ -190,14 +192,14 @@ function fillEditorArea(x,y){
   const px=point%SPRITE_SIZE,py=Math.floor(point/SPRITE_SIZE);
   if(px>0)stack.push(point-1);if(px<SPRITE_SIZE-1)stack.push(point+1);if(py>0)stack.push(point-SPRITE_SIZE);if(py<SPRITE_SIZE-1)stack.push(point+SPRITE_SIZE);
  }
- renderEditorCanvas();
+ renderEditorCanvas();renderEditorPalette();
 }
 
 function pickEditorColor(x,y){
  const data=currentEditorState().imageData.data;const offset=(y*SPRITE_SIZE+x)*4;
  if(data[offset+3]!==255){setEditorTool('eraser');return}
  const hex=rgbToHex(data[offset],data[offset+1],data[offset+2]);
- editorColor=ensurePaletteColor(currentCharacter,hex,'取样色','来自画布');setEditorTool('pencil');renderEditorPalette();
+ editorColor=hex;setEditorTool('pencil');renderEditorPalette();
 }
 
 editorCanvas.addEventListener('pointerdown',event=>{
@@ -211,18 +213,18 @@ editorCanvas.addEventListener('pointermove',event=>{
  const {x,y}=editorPoint(event);document.querySelector('#editor-coordinate').textContent=`X ${String(x).padStart(2,'0')} · Y ${String(y).padStart(2,'0')}`;
  if(editorDrawing){drawEditorLine(lastEditorPoint,{x,y});lastEditorPoint={x,y}}
 });
-editorCanvas.addEventListener('pointerup',()=>{editorDrawing=false;lastEditorPoint=null});
-editorCanvas.addEventListener('pointercancel',()=>{editorDrawing=false;lastEditorPoint=null});
+editorCanvas.addEventListener('pointerup',()=>{editorDrawing=false;lastEditorPoint=null;renderEditorPalette()});
+editorCanvas.addEventListener('pointercancel',()=>{editorDrawing=false;lastEditorPoint=null;renderEditorPalette()});
 editorCanvas.addEventListener('pointerleave',()=>{document.querySelector('#editor-coordinate').textContent='X — · Y —'});
 
 document.querySelectorAll('[data-editor-tool]').forEach(button=>button.addEventListener('click',()=>setEditorTool(button.dataset.editorTool)));
 document.querySelector('#editor-undo').addEventListener('click',()=>{
  const state=currentEditorState();if(!state?.history.length)return;
- state.future.push(copyImageData(state.imageData));state.imageData=state.history.pop();renderEditorCanvas();
+ state.future.push(copyImageData(state.imageData));state.imageData=state.history.pop();renderEditorCanvas();renderEditorPalette();
 });
 document.querySelector('#editor-redo').addEventListener('click',()=>{
  const state=currentEditorState();if(!state?.future.length)return;
- state.history.push(copyImageData(state.imageData));state.imageData=state.future.pop();renderEditorCanvas();
+ state.history.push(copyImageData(state.imageData));state.imageData=state.future.pop();renderEditorCanvas();renderEditorPalette();
 });
 
 function previewDataUrl(){
@@ -275,6 +277,7 @@ document.querySelector('#editor-export').addEventListener('click',()=>downloadDa
 document.querySelector('#editor-export-preview').addEventListener('click',()=>downloadDataUrl(previewDataUrl(),`${characterFilename()}-edited-preview-10x.png`));
 document.querySelector('#editor-reset').addEventListener('click',async()=>{
  const data=characters[currentCharacter];localStorage.removeItem(`${STORAGE_PREFIX}${currentCharacter}`);
+ editorCustomColors[currentCharacter].clear();
  data.native=data.originalNative;data.preview=data.originalPreview;delete editorStates[currentCharacter];
  await loadEditorCharacter(currentCharacter,true);selectCharacter(currentCharacter);renderEditorCanvas('已恢复项目中的原始像素稿');
 });
@@ -291,7 +294,7 @@ document.querySelector('#editor-import').addEventListener('change',async event=>
    if(alpha===255){const hex=rgbToHex(imported.data[index],imported.data[index+1],imported.data[index+2]);used.add(hex)}
   }
   if(used.size>MAX_COLORS)throw new Error(`图片使用超过 ${MAX_COLORS} 种不透明颜色`);
-  snapshotForUndo();currentEditorState().imageData=imported;syncPaletteFromImage(currentCharacter,imported);renderEditorPalette();renderEditorCanvas(`已导入 ${file.name} · ${used.size} 色`);
+  snapshotForUndo();currentEditorState().imageData=imported;editorCustomColors[currentCharacter].clear();renderEditorPalette();renderEditorCanvas(`已导入 ${file.name} · ${used.size} 色`);
  }catch(error){renderEditorCanvas(`导入失败：${error.message}`)}finally{URL.revokeObjectURL(image.src)}
 });
 
