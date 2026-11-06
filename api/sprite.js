@@ -38,7 +38,7 @@ function validatePixels(character, encoded) {
   return { pixels: pixels.toString('base64'), colorCount: used.size };
 }
 
-export default async function handler(request) {
+async function handler(request) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return reply({ error: '尚未连接 Vercel Blob 存储' }, 503);
   const url = new URL(request.url);
 
@@ -70,4 +70,12 @@ export default async function handler(request) {
   }
 
   return new Response(null, { status: 405, headers: { Allow: 'GET, POST' } });
+}
+
+export async function GET(request) {
+  return handler(request);
+}
+
+export async function POST(request) {
+  return handler(request);
 }
