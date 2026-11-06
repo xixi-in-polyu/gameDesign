@@ -43,6 +43,7 @@ function setScale(scale){
 }
 scales.forEach(button=>button.addEventListener('click',()=>setScale(Number(button.dataset.scale))));
 function selectCharacter(key){
+ cancelColorFlash();
  currentCharacter=key;
  const data=characters[key];
  document.querySelectorAll('[data-character]').forEach(button=>button.setAttribute('aria-selected',button.dataset.character===key));
@@ -72,6 +73,8 @@ let editorTool='pencil';
 let editorColor=characters.linsi.palette[0][0];
 let editorDrawing=false;
 let lastEditorPoint=null;
+let colorFlashInterval=null;
+let colorFlashTimeout=null;
 
 function copyImageData(imageData){return new ImageData(new Uint8ClampedArray(imageData.data),SPRITE_SIZE,SPRITE_SIZE)}
 function hexToRgb(hex){return [parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]}
@@ -132,18 +135,44 @@ function renderEditorCanvas(message){
  document.querySelector('#editor-redo').disabled=!state.future.length;
 }
 
+function cancelColorFlash(){
+ if(colorFlashInterval)clearInterval(colorFlashInterval);
+ if(colorFlashTimeout)clearTimeout(colorFlashTimeout);
+ colorFlashInterval=null;colorFlashTimeout=null;
+ const state=currentEditorState();if(state)editorContext.putImageData(state.imageData,0,0);
+}
+
+function flashColorUsage(hex){
+ cancelColorFlash();
+ const state=currentEditorState();if(!state)return;
+ const target=hexToRgb(hex);const pixels=[];
+ for(let index=0;index<state.imageData.data.length;index+=4){
+  if(state.imageData.data[index+3]===255&&target.every((value,channel)=>state.imageData.data[index+channel]===value))pixels.push(index/4);
+ }
+ if(!pixels.length){renderEditorCanvas(`当前图片尚未使用 ${hex}`);return}
+ renderEditorCanvas(`正在高亮 ${hex} · ${pixels.length} 个像素`);
+ let visible=true;
+ const draw=()=>{
+  editorContext.putImageData(state.imageData,0,0);
+  if(visible){editorContext.fillStyle='#FF00FF';pixels.forEach(point=>editorContext.fillRect(point%SPRITE_SIZE,Math.floor(point/SPRITE_SIZE),1,1))}
+  visible=!visible;
+ };
+ draw();colorFlashInterval=setInterval(draw,140);
+ colorFlashTimeout=setTimeout(()=>{cancelColorFlash();renderEditorCanvas()},1000);
+}
+
 function renderEditorPalette(){
  const container=document.querySelector('#editor-palette');
  container.innerHTML=editorPaletteEntries().map(([hex,name])=>`<button data-editor-color="${hex}" title="${name} ${hex}" aria-label="${name} ${hex}" aria-pressed="${hex===editorColor}"><i style="background:${hex}"></i><code>${hex}</code></button>`).join('');
  container.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{
-  editorColor=button.dataset.editorColor;setEditorTool('pencil');renderEditorPalette();
+  editorColor=button.dataset.editorColor;setEditorTool('pencil');renderEditorPalette();flashColorUsage(editorColor);
  }));
  const custom=document.querySelector('#editor-custom-color');if(custom)custom.value=editorColor;
 }
 
 document.querySelector('#editor-add-color').addEventListener('click',()=>{
  const hex=document.querySelector('#editor-custom-color').value.toUpperCase();editorCustomColors[currentCharacter].add(hex);
- editorColor=hex;setEditorTool('pencil');renderEditorPalette();
+ editorColor=hex;setEditorTool('pencil');renderEditorPalette();flashColorUsage(editorColor);
 });
 
 function setEditorTool(tool){
@@ -199,10 +228,11 @@ function pickEditorColor(x,y){
  const data=currentEditorState().imageData.data;const offset=(y*SPRITE_SIZE+x)*4;
  if(data[offset+3]!==255){setEditorTool('eraser');return}
  const hex=rgbToHex(data[offset],data[offset+1],data[offset+2]);
- editorColor=hex;setEditorTool('pencil');renderEditorPalette();
+ editorColor=hex;setEditorTool('pencil');renderEditorPalette();flashColorUsage(editorColor);
 }
 
 editorCanvas.addEventListener('pointerdown',event=>{
+ cancelColorFlash();
  event.preventDefault();editorCanvas.setPointerCapture(event.pointerId);
  const {x,y}=editorPoint(event);
  if(editorTool==='eyedropper'){pickEditorColor(x,y);return}
@@ -219,10 +249,12 @@ editorCanvas.addEventListener('pointerleave',()=>{document.querySelector('#edito
 
 document.querySelectorAll('[data-editor-tool]').forEach(button=>button.addEventListener('click',()=>setEditorTool(button.dataset.editorTool)));
 document.querySelector('#editor-undo').addEventListener('click',()=>{
+ cancelColorFlash();
  const state=currentEditorState();if(!state?.history.length)return;
  state.future.push(copyImageData(state.imageData));state.imageData=state.history.pop();renderEditorCanvas();renderEditorPalette();
 });
 document.querySelector('#editor-redo').addEventListener('click',()=>{
+ cancelColorFlash();
  const state=currentEditorState();if(!state?.future.length)return;
  state.history.push(copyImageData(state.imageData));state.imageData=state.future.pop();renderEditorCanvas();renderEditorPalette();
 });
