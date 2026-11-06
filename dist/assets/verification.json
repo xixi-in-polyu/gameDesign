@@ -9,14 +9,14 @@
   ],
   "opaque_rgb_count": 8,
   "palette_pixel_counts": {
-    "#24232A": 380,
-    "#B78458": 87,
-    "#383E53": 114,
-    "#AD4939": 125,
-    "#EDB980": 78,
-    "#F3DCAF": 57,
-    "#295254": 109,
-    "#57877B": 115
+    "#24232A": 717,
+    "#383E53": 106,
+    "#57877B": 5,
+    "#B78458": 41,
+    "#AD4939": 215,
+    "#EDB980": 180,
+    "#F3DCAF": 45,
+    "#295254": 97
   },
   "alpha_values": [
     0,
@@ -25,14 +25,14 @@
   "preview_scale": 8,
   "exact_replication_pixels": 262144,
   "occupied_y_rows": [
-    6,
-    61
+    2,
+    60
   ],
   "lin_si_occupied_y_rows": [
-    3,
-    61
+    2,
+    60
   ],
-  "height_reduction_vs_lin_si_percent": 5.08,
+  "height_reduction_vs_lin_si_percent": 0,
   "concept_turnaround_views": {
     "front": {
       "yueling_top": 82,

@@ -1,11 +1,11 @@
 const characters={
- yueling:{name:'沈月玲',native:'assets/character_64x64.png?rev=2',preview:'assets/character_preview.png?rev=2',verification:'assets/verification.json',title:'沈月玲 · 八色定稿',copy:'墨色连接轮廓，海青区分受光与背光。麻绳与肌肤共用暖色，米白只落在领口、绑腿和少数亮点。',palette:[
+ yueling:{name:'沈月玲',native:'assets/character_64x64.png?rev=3',preview:'assets/character_preview.png?rev=3',verification:'assets/verification.json',title:'沈月玲 · 八色定稿',copy:'墨色连接轮廓，海青区分受光与背光。麻绳与肌肤共用暖色，米白只落在领口、绑腿和少数亮点。',palette:[
   ['#24232A','墨黑','头发与外轮廓'],['#383E53','靛灰','宽裤与布鞋'],
   ['#295254','深海青','短衣暗面'],['#57877B','灰绿','肩袖受光面'],
   ['#AD4939','砖红','头巾与腰带'],['#B78458','绳褐','腰绳与肤色暗面'],
   ['#EDB980','暖肤','面颊与前臂'],['#F3DCAF','麻白','交领、绑腿与绳光']
  ]},
- linsi:{name:'林巳',native:'assets/lin-si-64x64.png',preview:'assets/lin-si-preview.png',verification:'assets/lin-si-verification.json',title:'林巳 · 八色定稿',copy:'冷灰蓝建立书生的纵向轮廓，锈红束带切开衣身；皮褐同时承担工具包、火器木柄与衣缘，米白留给交领和绑腿。',palette:[
+ linsi:{name:'林巳',native:'assets/lin-si-64x64.png?rev=3',preview:'assets/lin-si-preview.png?rev=3',verification:'assets/lin-si-verification.json',title:'林巳 · 八色定稿',copy:'冷灰蓝建立书生的纵向轮廓，锈红束带切开衣身；皮褐同时承担工具包、火器木柄与衣缘，米白留给交领和绑腿。',palette:[
   ['#24232A','墨黑','头发与外轮廓'],['#3C3B46','炭灰','布帽、裤脚与鞋'],
   ['#4D5C62','深灰蓝','长衣暗面'],['#708087','雾灰蓝','衣襟受光面'],
   ['#A54B2D','锈红','束带与垂带'],['#956C43','皮褐','工具包、衣缘与火器'],
